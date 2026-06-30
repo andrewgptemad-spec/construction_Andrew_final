@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load expense_tags %}
+{% block title %}البحث الشامل - نظام إدارة التكاليف{% endblock %}
+{% block page_title %}البحث الشامل{% endblock %}
+
+{% block content %}
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">ابحث في جميع المصروفات</label>
+          <div class="search-bar">
+            <i class="bi bi-search" style="font-size:1.1rem"></i>
+            <input
+              type="text"
+              name="q"
+              class="form-control form-control-lg"
+              placeholder="أدخل كلمة البحث... مثال: أسمنت، حديد، سائق"
+              value="{{ q }}"
+              dir="rtl"
+              autofocus
+              style="padding-right:48px;font-size:1rem"
+            >
+          </div>
+          <div class="form-text">يبحث في: العنوان، التصنيف، اسم المورد، الملاحظات</div>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1">
+            <i class="bi bi-search me-1"></i>بحث
+          </button>
+          {% if q %}
+          <a href="{% url 'global_search' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if q %}
+  <!-- Results Summary -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h6 class="mb-0" style="color:#1a3a5c">
+        نتائج البحث عن: <span class="text-primary">"{{ q }}"</span>
+      </h6>
+      <small class="text-muted">{{ total_found }} نتيجة</small>
+    </div>
+  </div>
+
+  {% if results %}
+  <div class="table-wrapper">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>المرجع</th>
+            <th>العنوان</th>
+            <th>التصنيف</th>
+            <th>النوع</th>
+            <th>الفيلا</th>
+            <th class="text-start">المبلغ المخصص</th>
+            <th>المورد</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alloc in results %}
+          <tr>
+            <td style="white-space:nowrap">{{ alloc.expense.date|date:"Y/m/d" }}</td>
+            <td><span class="ref-badge">{{ alloc.expense.reference_number }}</span></td>
+            <td>
+              <a href="{% url 'expense_detail' alloc.expense.pk %}" class="text-decoration-none text-dark" style="font-weight:600">
+                {{ alloc.expense.title }}
+              </a>
+            </td>
+            <td>{{ alloc.expense.category.name }}</td>
+            <td>
+              {% if alloc.expense.expense_type == 'direct' %}
+                <span class="badge-direct">مباشر</span>
+              {% else %}
+                <span class="badge-indirect">غير مباشر</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{% url 'villa_detail' alloc.villa.pk %}" class="text-decoration-none" style="font-weight:600;color:#1a3a5c">
+                <i class="bi bi-building me-1"></i>{{ alloc.villa.name }}
+              </a>
+            </td>
+            <td class="text-start" style="font-weight:700;white-space:nowrap">
+              {{ alloc.allocated_amount|floatformat:2 }} <small class="text-muted fw-normal">ج م</small>
+            </td>
+            <td>{{ alloc.expense.supplier_name|default:"—" }}</td>
+            <td>
+              <a href="{% url 'expense_detail' alloc.expense.pk %}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if results.has_other_pages %}
+  <nav class="mt-4 d-flex justify-content-center">
+    <ul class="pagination">
+      {% if results.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?q={{ q }}&page={{ results.previous_page_number }}"><i class="bi bi-chevron-right"></i></a>
+      </li>
+      {% endif %}
+      {% for num in results.paginator.page_range %}
+      <li class="page-item {% if results.number == num %}active{% endif %}">
+        <a class="page-link" href="?q={{ q }}&page={{ num }}">{{ num }}</a>
+      </li>
+      {% endfor %}
+      {% if results.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?q={{ q }}&page={{ results.next_page_number }}"><i class="bi bi-chevron-left"></i></a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-search"></i>
+    <p class="mb-1">لا توجد نتائج لـ "{{ q }}"</p>
+    <small class="text-muted">جرب كلمات بحث مختلفة مثل: أسمنت، حديد، سائق، استشاري</small>
+  </div>
+  {% endif %}
+
+{% else %}
+  <!-- Initial State -->
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body py-5 text-center">
+          <i class="bi bi-search" style="font-size:4rem;color:#1a3a5c;opacity:0.25"></i>
+          <h5 class="mt-3 mb-2" style="color:#1a3a5c">ابحث في جميع المصروفات</h5>
+          <p class="text-muted mb-4">أدخل كلمة البحث في الحقل أعلاه للبحث عبر جميع الفيلات</p>
+          <div class="d-flex flex-wrap gap-2 justify-content-center">
+            {% for term in "أسمنت,حديد,طوب,سائق,استشاري,كهرباء,سباكة,دهانات"|split:"," %}
+            <a href="?q={{ term }}" class="btn btn-outline-primary btn-sm">{{ term }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

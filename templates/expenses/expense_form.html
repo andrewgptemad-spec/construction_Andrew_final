@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+{% load expense_tags %}
+{% block title %}{% if is_edit %}تعديل مصروف{% else %}إضافة مصروف جديد{% endif %} - نظام إدارة التكاليف{% endblock %}
+{% block page_title %}{% if is_edit %}تعديل مصروف: {{ expense.reference_number }}{% else %}إضافة مصروف جديد{% endif %}{% endblock %}
+{% block content %}
+{% if not request.user.is_staff %}
+<div class="alert alert-danger">ليس لديك صلاحية الوصول إلى هذه الصفحة.</div>
+{% else %}
+<form method="post" enctype="multipart/form-data" id="expenseForm">
+{% csrf_token %}
+
+<div class="row g-4">
+  <!-- LEFT COLUMN: Expense Details -->
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-receipt me-2"></i>تفاصيل المصروف</div>
+      <div class="card-body">
+
+        <!-- Expense Type -->
+        <div class="mb-3">
+          <label class="form-label">{{ form.expense_type.label }} <span class="text-danger">*</span></label>
+          {{ form.expense_type }}
+          {% if form.expense_type.errors %}<div class="text-danger small mt-1">{{ form.expense_type.errors.0 }}</div>{% endif %}
+        </div>
+
+        <!-- Category -->
+        <div class="mb-3">
+          <label class="form-label">{{ form.category.label }} <span class="text-danger">*</span></label>
+          {{ form.category }}
+          {% if form.category.errors %}<div class="text-danger small mt-1">{{ form.category.errors.0 }}</div>{% endif %}
+        </div>
+
+        <!-- Title -->
+        <div class="mb-3">
+          <label class="form-label">{{ form.title.label }} <span class="text-danger">*</span></label>
+          {{ form.title }}
+          {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors.0 }}</div>{% endif %}
+        </div>
+
+        <!-- Amount + Date Row -->
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label">{{ form.total_amount.label }} <span class="text-danger">*</span></label>
+            <div class="input-group">
+              {{ form.total_amount }}
+              <span class="input-group-text">ج م</span>
+            </div>
+            {% if form.total_amount.errors %}<div class="text-danger small mt-1">{{ form.total_amount.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">{{ form.date.label }} <span class="text-danger">*</span></label>
+            {{ form.date }}
+            {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Supplier -->
+        <div class="mb-3">
+          <label class="form-label">{{ form.supplier_name.label }}</label>
+          {{ form.supplier_name }}
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-3">
+          <label class="form-label">{{ form.notes.label }}</label>
+          {{ form.notes }}
+        </div>
+
+        <!-- Invoice Image -->
+        <div class="mb-0">
+          <label class="form-label">{{ form.invoice_image.label }}</label>
+          {{ form.invoice_image }}
+          <div class="form-text">الصيغ المدعومة: JPG, PNG, PDF</div>
+          {% if is_edit and expense.invoice_image %}
+          <div class="mt-2">
+            <small class="text-muted">الملف الحالي: {{ expense.invoice_image.name }}</small>
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Non-field errors -->
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT COLUMN: Villa Allocation -->
+  <div class="col-lg-5">
+    <div class="card sticky-top" style="top:80px">
+      <div class="card-header"><i class="bi bi-buildings me-2"></i>تخصيص الفيلات <span class="text-danger">*</span></div>
+      <div class="card-body">
+
+        <!-- Allocation Mode Toggle -->
+        <div class="mb-3">
+          <label class="form-label">طريقة التوزيع</label>
+          <div class="mode-toggle">
+            <button type="button" class="mode-btn active" id="btn-equal" onclick="setMode('equal')">
+              <i class="bi bi-distribute-vertical me-1"></i>توزيع متساوٍ
+            </button>
+            <button type="button" class="mode-btn" id="btn-custom" onclick="setMode('custom')">
+              <i class="bi bi-sliders me-1"></i>توزيع مخصص
+            </button>
+          </div>
+          <input type="hidden" name="allocation_mode" id="allocation_mode" value="equal">
+        </div>
+
+        <!-- Villa Checkboxes -->
+        <div class="mb-3" id="villaList">
+          {% for villa in villas %}
+          <div class="villa-checkbox-item mb-2" id="villa-item-{{ villa.pk }}">
+            <input
+              type="checkbox"
+              class="form-check-input villa-checkbox"
+              name="selected_villas"
+              value="{{ villa.pk }}"
+              id="villa_{{ villa.pk }}"
+              onchange="handleVillaToggle({{ villa.pk }}, this.checked)"
+              {% if is_edit and villa.pk in existing_allocations %}checked{% endif %}
+            >
+            <label class="form-check-label flex-grow-1 cursor-pointer" for="villa_{{ villa.pk }}" style="cursor:pointer">
+              <div class="fw-600" style="font-weight:600">{{ villa.name }}</div>
+              <div class="text-muted" style="font-size:0.75rem">{{ villa.code }}</div>
+            </label>
+            <input
+              type="number"
+              class="form-control form-control-sm villa-amount-input"
+              name="amount_villa_{{ villa.pk }}"
+              id="amount_{{ villa.pk }}"
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+              style="display:none"
+              oninput="updateAllocationSummary()"
+              {% if is_edit and villa.pk in existing_allocations %}value="{{ existing_allocations|get_item:villa.pk }}"{% endif %}
+            >
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Allocation Summary -->
+        <div class="allocation-summary" id="allocSummary">
+          <div class="d-flex justify-content-between">
+            <span>المبلغ الإجمالي:</span>
+            <strong id="summaryTotal">0.00 ج م</strong>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <span>موزع على:</span>
+            <strong id="summaryAllocated">0.00 ج م</strong>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <span>المتبقي:</span>
+            <strong id="summaryRemaining" class="allocation-ok">0.00 ج م</strong>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Buttons -->
+<div class="d-flex gap-2 mt-3 no-print">
+  <button type="submit" class="btn btn-primary px-5" id="submitBtn">
+    <i class="bi bi-check-lg me-1"></i>
+    {% if is_edit %}حفظ التعديلات{% else %}حفظ المصروف{% endif %}
+  </button>
+  <a href="{% if is_edit %}{% url 'expense_detail' expense.pk %}{% else %}{% url 'expense_list' %}{% endif %}" class="btn btn-outline-secondary px-4">
+    إلغاء
+  </a>
+</div>
+
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CATEGORIES = {{ categories_json|safe }};
+let currentMode = 'equal';
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  filterCategories(document.getElementById('id_expense_type').value);
+  updateAllocationSummary();
+  initExistingSelections();
+});
+
+function initExistingSelections() {
+  document.querySelectorAll('.villa-checkbox:checked').forEach(cb => {
+    const villaId = parseInt(cb.value);
+    updateVillaItemStyle(villaId, true);
+  });
+}
+
+function filterCategories(expType) {
+  const sel = document.getElementById('id_category');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">---------</option>';
+  CATEGORIES.filter(c => !expType || c.category_type === expType).forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (String(c.id) === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('allocation_mode').value = mode;
+  document.getElementById('btn-equal').classList.toggle('active', mode === 'equal');
+  document.getElementById('btn-custom').classList.toggle('active', mode === 'custom');
+
+  const amountInputs = document.querySelectorAll('.villa-amount-input');
+  amountInputs.forEach(inp => {
+    const villaId = inp.id.replace('amount_', '');
+    const cb = document.getElementById('villa_' + villaId);
+    if (mode === 'custom' && cb && cb.checked) {
+      inp.style.display = 'block';
+    } else {
+      inp.style.display = 'none';
+    }
+  });
+  recalculateAllocations();
+}
+
+function handleVillaToggle(villaId, isChecked) {
+  updateVillaItemStyle(villaId, isChecked);
+  const amtInput = document.getElementById('amount_' + villaId);
+  if (currentMode === 'custom') {
+    amtInput.style.display = isChecked ? 'block' : 'none';
+    if (!isChecked) amtInput.value = '';
+  }
+  recalculateAllocations();
+}
+
+function updateVillaItemStyle(villaId, selected) {
+  const item = document.getElementById('villa-item-' + villaId);
+  if (item) {
+    item.classList.toggle('selected', selected);
+  }
+}
+
+function recalculateAllocations() {
+  if (currentMode !== 'equal') {
+    updateAllocationSummary();
+    return;
+  }
+  const total = parseFloat(document.getElementById('id_total_amount').value) || 0;
+  const checked = document.querySelectorAll('.villa-checkbox:checked');
+  const count = checked.length;
+  if (count > 0 && total > 0) {
+    const perVilla = Math.floor((total / count) * 100) / 100;
+    let remaining = total;
+    checked.forEach((cb, i) => {
+      const amtInput = document.getElementById('amount_' + cb.value);
+      if (i === count - 1) {
+        amtInput.value = (remaining).toFixed(2);
+      } else {
+        amtInput.value = perVilla.toFixed(2);
+        remaining -= perVilla;
+      }
+    });
+  }
+  updateAllocationSummary();
+}
+
+function updateAllocationSummary() {
+  const total = parseFloat(document.getElementById('id_total_amount').value) || 0;
+  const checked = document.querySelectorAll('.villa-checkbox:checked');
+  let allocated = 0;
+  checked.forEach(cb => {
+    const val = parseFloat(document.getElementById('amount_' + cb.value).value) || 0;
+    allocated += val;
+  });
+  const remaining = total - allocated;
+
+  document.getElementById('summaryTotal').textContent = total.toFixed(2) + ' ج م';
+  document.getElementById('summaryAllocated').textContent = allocated.toFixed(2) + ' ج م';
+  const remEl = document.getElementById('summaryRemaining');
+  remEl.textContent = remaining.toFixed(2) + ' ج م';
+  remEl.className = Math.abs(remaining) < 0.01 ? 'allocation-ok' : 'allocation-error';
+}
+</script>
+{% endblock %}

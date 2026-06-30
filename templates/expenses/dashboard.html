@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}لوحة التحكم - نظام إدارة التكاليف{% endblock %}
+{% block page_title %}لوحة التحكم{% endblock %}
+
+{% block topbar_actions %}
+{% if request.user.is_staff %}
+<a href="{% url 'expense_add' %}" class="btn btn-accent btn-sm">
+  <i class="bi bi-plus-lg me-1"></i> إضافة مصروف
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="stat-card primary">
+      <div class="stat-label">إجمالي المصروفات</div>
+      <div class="stat-value">{{ total_all|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="stat-card success">
+      <div class="stat-label">مصروفات مباشرة</div>
+      <div class="stat-value">{{ total_direct|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-building"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="stat-card accent">
+      <div class="stat-label">مصروفات غير مباشرة</div>
+      <div class="stat-value">{{ total_indirect|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-truck"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- Villa Cards -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-buildings me-2"></i>ملخص الفيلات</span>
+    <a href="{% url 'villa_list' %}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for item in villa_data %}
+      <div class="col-sm-6 col-lg-4">
+        <a href="{% url 'villa_detail' item.villa.pk %}" class="text-decoration-none">
+          <div class="card villa-card h-100">
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="villa-num">{{ item.villa.code|slice:"3:" }}</div>
+                <div>
+                  <div class="fw-700" style="color:#1a3a5c;font-weight:700">{{ item.villa.name }}</div>
+                  <div class="text-muted" style="font-size:0.75rem">{{ item.villa.code }}</div>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted" style="font-size:0.8rem">مباشر</span>
+                <span class="badge-direct">{{ item.direct|floatformat:0 }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted" style="font-size:0.8rem">غير مباشر</span>
+                <span class="badge-indirect">{{ item.indirect|floatformat:0 }}</span>
+              </div>
+              <hr class="my-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-600" style="font-size:0.82rem;color:#1a3a5c;font-weight:600">الإجمالي</span>
+                <span class="fw-700" style="color:#1a3a5c;font-size:1rem;font-weight:700">{{ item.total|floatformat:0 }} <small style="font-size:0.7rem">ج م</small></span>
+              </div>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <div class="empty-state">
+          <i class="bi bi-buildings"></i>
+          <p>لا توجد فيلات مضافة بعد</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Recent Expenses -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-clock-history me-2"></i>آخر المصروفات</span>
+    <a href="{% url 'expense_list' %}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>المرجع</th>
+          <th>العنوان</th>
+          <th>التصنيف</th>
+          <th>النوع</th>
+          <th>المبلغ</th>
+          <th>الفيلات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for expense in recent_expenses %}
+        <tr>
+          <td>{{ expense.date|date:"Y/m/d" }}</td>
+          <td><span class="ref-badge">{{ expense.reference_number }}</span></td>
+          <td>
+            <a href="{% url 'expense_detail' expense.pk %}" class="text-decoration-none text-dark fw-600" style="font-weight:600">
+              {{ expense.title }}
+            </a>
+          </td>
+          <td>{{ expense.category.name }}</td>
+          <td>
+            {% if expense.expense_type == 'direct' %}
+              <span class="badge-direct">مباشر</span>
+            {% else %}
+              <span class="badge-indirect">غير مباشر</span>
+            {% endif %}
+          </td>
+          <td class="fw-600" style="font-weight:600">{{ expense.total_amount|floatformat:0 }} <small class="text-muted">ج م</small></td>
+          <td>
+            {% for alloc in expense.allocations.all %}
+              <span class="badge bg-light text-dark border me-1" style="font-size:0.72rem">{{ alloc.villa.name }}</span>
+            {% endfor %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5 text-muted">
+            <i class="bi bi-inbox d-block mb-2" style="font-size:2rem;opacity:0.4"></i>
+            لا توجد مصروفات بعد. <a href="{% url 'expense_add' %}">أضف أول مصروف</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

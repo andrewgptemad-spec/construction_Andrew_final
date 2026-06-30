@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}{{ villa.name }} - تفاصيل الفيلا{% endblock %}
+{% block page_title %}{{ villa.name }}{% endblock %}
+
+{% block topbar_actions %}
+{% if request.user.is_staff %}
+<a href="{% url 'expense_add' %}" class="btn btn-accent btn-sm">
+  <i class="bi bi-plus-lg me-1"></i>إضافة مصروف
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Villa Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card primary">
+      <div class="stat-label">إجمالي المصروفات</div>
+      <div class="stat-value">{{ grand_total|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card success">
+      <div class="stat-label">مصروفات مباشرة</div>
+      <div class="stat-value">{{ total_direct|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-building"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card accent">
+      <div class="stat-label">مصروفات غير مباشرة</div>
+      <div class="stat-value">{{ total_indirect|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-truck"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filter -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-search me-2"></i>البحث داخل الفيلا</div>
+  <div class="card-body">
+    <form method="get">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="search-bar">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" class="form-control" placeholder="بحث في العنوان، التصنيف، المورد..." value="{{ q }}" dir="rtl">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <select name="expense_type" class="form-select">
+            <option value="">جميع الأنواع</option>
+            <option value="direct" {% if expense_type == 'direct' %}selected{% endif %}>مباشر</option>
+            <option value="indirect" {% if expense_type == 'indirect' %}selected{% endif %}>غير مباشر</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select name="category" class="form-select">
+            <option value="">جميع التصنيفات</option>
+            {% for cat in categories %}
+            <option value="{{ cat.pk }}" {% if category_id == cat.pk|stringformat:"s" %}selected{% endif %}>
+              {{ cat.name }} ({{ cat.get_category_type_display }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <div class="d-flex gap-2">
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}" title="من تاريخ">
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}" title="إلى تاريخ">
+          </div>
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>بحث</button>
+          <a href="{% url 'villa_detail' villa.pk %}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i>إعادة تعيين</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Results Count -->
+{% if q or expense_type or category_id or date_from or date_to %}
+<div class="alert alert-info mb-3" style="font-size:0.88rem">
+  <i class="bi bi-info-circle me-1"></i>
+  نتائج البحث: <strong>{{ allocations.paginator.count }}</strong> سجل بإجمالي <strong>{{ filtered_total|floatformat:0 }} ج م</strong>
+</div>
+{% endif %}
+
+<!-- Expenses Table -->
+<div class="table-wrapper">
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>المرجع</th>
+          <th>العنوان</th>
+          <th>التصنيف</th>
+          <th>النوع</th>
+          <th class="text-start">المبلغ المخصص</th>
+          <th>المورد</th>
+          <th>ملاحظات</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alloc in allocations %}
+        <tr>
+          <td style="white-space:nowrap">{{ alloc.expense.date|date:"Y/m/d" }}</td>
+          <td><span class="ref-badge">{{ alloc.expense.reference_number }}</span></td>
+          <td>
+            <a href="{% url 'expense_detail' alloc.expense.pk %}" class="text-decoration-none text-dark" style="font-weight:600">
+              {{ alloc.expense.title }}
+            </a>
+          </td>
+          <td>{{ alloc.expense.category.name }}</td>
+          <td>
+            {% if alloc.expense.expense_type == 'direct' %}
+              <span class="badge-direct">مباشر</span>
+            {% else %}
+              <span class="badge-indirect">غير مباشر</span>
+            {% endif %}
+          </td>
+          <td class="text-start" style="font-weight:700;white-space:nowrap">
+            {{ alloc.allocated_amount|floatformat:2 }}
+            <small class="text-muted fw-normal">ج م</small>
+            {% if alloc.allocated_amount != alloc.expense.total_amount %}
+            <div style="font-size:0.7rem;color:#6c757d">
+              من {{ alloc.expense.total_amount|floatformat:0 }} إجمالي
+            </div>
+            {% endif %}
+          </td>
+          <td>{{ alloc.expense.supplier_name|default:"—" }}</td>
+          <td>
+            {% if alloc.expense.notes %}
+            <span title="{{ alloc.expense.notes }}" style="cursor:help">
+              <i class="bi bi-chat-left-text text-muted"></i>
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <a href="{% url 'expense_detail' alloc.expense.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <p>لا توجد مصروفات{% if q %} تطابق "{{ q }}"{% endif %}</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if allocations %}
+      <tfoot>
+        <tr class="table-light" style="font-weight:700">
+          <td colspan="5" class="text-start">الإجمالي (الصفحة الحالية)</td>
+          <td class="text-start">
+            {% with page_total=0 %}
+            {% for alloc in allocations %}{% endfor %}
+            {{ filtered_total|floatformat:2 }} ج م
+            {% endwith %}
+          </td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if allocations.has_other_pages %}
+<nav class="mt-4 d-flex justify-content-center">
+  <ul class="pagination">
+    {% if allocations.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ allocations.previous_page_number }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% for num in allocations.paginator.page_range %}
+    <li class="page-item {% if allocations.number == num %}active{% endif %}">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+    </li>
+    {% endfor %}
+    {% if allocations.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ allocations.next_page_number }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

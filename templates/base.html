@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}نظام إدارة تكاليف البناء{% endblock %}</title>
+
+  <!-- Bootstrap 5 RTL -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Google Fonts Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- Custom CSS -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🏗️</div>
+    <p class="brand-title">نظام إدارة<br>تكاليف البناء</p>
+    <span class="brand-sub">Construction Cost Manager</span>
+  </div>
+
+  <nav>
+    <div class="nav-section-label">الرئيسية</div>
+    <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i>
+      <span>لوحة التحكم</span>
+    </a>
+
+    <div class="nav-section-label">المشاريع</div>
+    <a href="{% url 'villa_list' %}" class="nav-link {% if 'villa' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-buildings"></i>
+      <span>الفيلات</span>
+    </a>
+
+    <div class="nav-section-label">المصروفات</div>
+    {% if request.user.is_authenticated and request.user.is_staff %}
+    <a href="{% url 'expense_add' %}" class="nav-link {% if request.resolver_match.url_name == 'expense_add' %}active{% endif %}">
+      <i class="bi bi-plus-circle"></i>
+      <span>إضافة مصروف</span>
+    </a>
+    {% endif %}
+    <a href="{% url 'expense_list' %}" class="nav-link {% if request.resolver_match.url_name == 'expense_list' %}active{% endif %}">
+      <i class="bi bi-list-ul"></i>
+      <span>قائمة المصروفات</span>
+    </a>
+
+    <div class="nav-section-label">أدوات</div>
+    <a href="{% url 'global_search' %}" class="nav-link {% if request.resolver_match.url_name == 'global_search' %}active{% endif %}">
+      <i class="bi bi-search"></i>
+      <span>البحث الشامل</span>
+    </a>
+    <a href="{% url 'reports' %}" class="nav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+      <i class="bi bi-bar-chart-line"></i>
+      <span>التقارير</span>
+    </a>
+    {% if request.user.is_superuser %}
+    <div class="nav-section-label">إدارة الحساب</div>
+    <a href="{% url 'user_list' %}" class="nav-link {% if request.resolver_match.url_name == 'user_list' or request.resolver_match.url_name == 'user_add' %}active{% endif %}">
+      <i class="bi bi-people-fill"></i>
+      <span>المستخدمون</span>
+    </a>
+    {% endif %}
+  </nav>
+
+  <div class="sidebar-footer">
+    <div>مرحباً، {{ request.user.username }}</div>
+    <form action="{% url 'logout' %}" method="post" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-link text-warning text-decoration-none small p-0">
+        <i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج
+      </button>
+    </form>
+  </div>
+</aside>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<div class="main-content">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+      </button>
+      <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% block topbar_actions %}{% endblock %}
+      <!-- Quick search -->
+      <form action="{% url 'global_search' %}" method="get" class="d-none d-md-flex">
+        <div class="input-group input-group-sm" style="width:220px">
+          <input type="text" name="q" class="form-control" placeholder="بحث سريع..." dir="rtl">
+          <button class="btn btn-outline-secondary" type="submit">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Page Body -->
+  <div class="page-body">
+
+    <!-- Messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-4" role="alert">
+          <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' or message.tags == 'danger' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+  }
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

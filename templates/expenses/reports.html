@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}التقارير - نظام إدارة التكاليف{% endblock %}
+{% block page_title %}التقارير{% endblock %}
+
+{% block extra_css %}
+<style>
+  .report-section { margin-bottom: 32px; }
+  .pct-bar { height: 28px; border-radius: 6px; overflow: hidden; display: flex; }
+  .pct-label { font-size: 0.8rem; font-weight: 600; }
+  @media print {
+    .no-print { display: none !important; }
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+  }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button onclick="window.print()" class="btn btn-outline-secondary btn-sm no-print">
+  <i class="bi bi-printer me-1"></i>طباعة
+</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter -->
+<div class="card mb-4 no-print">
+  <div class="card-header"><i class="bi bi-funnel me-2"></i>فلترة التقارير</div>
+  <div class="card-body">
+    <form method="get">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">من تاريخ</label>
+          {{ form.date_from }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">إلى تاريخ</label>
+          {{ form.date_to }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">نوع المصروف</label>
+          {{ form.expense_type }}
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1">
+            <i class="bi bi-bar-chart me-1"></i>عرض التقرير
+          </button>
+          <a href="{% url 'reports' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg"></i>
+          </a>
+        </div>
+      </div>
+    </form>
+    {% if date_from or date_to %}
+    <div class="mt-2 text-muted" style="font-size:0.82rem">
+      <i class="bi bi-calendar me-1"></i>
+      الفترة: {% if date_from %}{{ date_from }}{% else %}البداية{% endif %}
+      — {% if date_to %}{{ date_to }}{% else %}الآن{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Grand Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card primary">
+      <div class="stat-label">الإجمالي الكلي</div>
+      <div class="stat-value">{{ grand_total|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">جنية</div>
+      <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card success">
+      <div class="stat-label">إجمالي المباشر</div>
+      <div class="stat-value">{{ total_direct|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">{{ direct_pct }}% من الإجمالي</div>
+      <div class="stat-icon"><i class="bi bi-building"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card accent">
+      <div class="stat-label">إجمالي غير المباشر</div>
+      <div class="stat-value">{{ total_indirect|floatformat:0 }}</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px">{{ indirect_pct }}% من الإجمالي</div>
+      <div class="stat-icon"><i class="bi bi-truck"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- Direct vs Indirect Visual -->
+{% if grand_total %}
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-pie-chart me-2"></i>توزيع المصروفات المباشرة وغير المباشرة</div>
+  <div class="card-body">
+    <div class="pct-bar mb-2">
+      <div class="bg-primary d-flex align-items-center justify-content-center text-white"
+           style="width:{{ direct_pct }}%;transition:width 0.5s;font-size:0.8rem;font-weight:700">
+        {% if direct_pct > 10 %}مباشر {{ direct_pct }}%{% endif %}
+      </div>
+      <div class="bg-warning d-flex align-items-center justify-content-center"
+           style="width:{{ indirect_pct }}%;font-size:0.8rem;font-weight:700;color:#92400e">
+        {% if indirect_pct > 10 %}غير مباشر {{ indirect_pct }}%{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-4 justify-content-center mt-3">
+      <div class="d-flex align-items-center gap-2">
+        <div style="width:14px;height:14px;background:#1a3a5c;border-radius:3px"></div>
+        <span style="font-size:0.85rem">مباشر: {{ total_direct|floatformat:0 }} ج م ({{ direct_pct }}%)</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <div style="width:14px;height:14px;background:#e8a020;border-radius:3px"></div>
+        <span style="font-size:0.85rem">غير مباشر: {{ total_indirect|floatformat:0 }} ج م ({{ indirect_pct }}%)</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+
+  <!-- Report by Villa -->
+  <div class="col-lg-6 report-section">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-buildings me-2"></i>المصروفات حسب الفيلا</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>الفيلا</th>
+              <th class="text-start">مباشر</th>
+              <th class="text-start">غير مباشر</th>
+              <th class="text-start">الإجمالي</th>
+              <th class="text-start">النسبة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in villa_report %}
+            <tr>
+              <td style="font-weight:600">{{ row.villa__name }}</td>
+              <td class="text-start">
+                <span class="badge-direct">{{ row.direct|default:0|floatformat:0 }}</span>
+              </td>
+              <td class="text-start">
+                <span class="badge-indirect">{{ row.indirect|default:0|floatformat:0 }}</span>
+              </td>
+              <td class="text-start" style="font-weight:700">{{ row.total|floatformat:0 }}</td>
+              <td class="text-start">
+                {% if grand_total %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px;min-width:50px">
+                      <div class="progress-bar bg-primary"
+                           style="width:{% widthratio row.total grand_total 100 %}%"></div>
+                    </div>
+                    <small>{% widthratio row.total grand_total 100 %}%</small>
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">لا توجد بيانات</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if villa_report %}
+          <tfoot>
+            <tr class="table-light" style="font-weight:700">
+              <td>الإجمالي</td>
+              <td class="text-start">{{ total_direct|floatformat:0 }}</td>
+              <td class="text-start">{{ total_indirect|floatformat:0 }}</td>
+              <td class="text-start">{{ grand_total|floatformat:0 }}</td>
+              <td class="text-start">100%</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report by Category -->
+  <div class="col-lg-6 report-section">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-tags me-2"></i>المصروفات حسب التصنيف</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>التصنيف</th>
+              <th>النوع</th>
+              <th class="text-start">المبلغ</th>
+              <th class="text-start">النسبة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in category_report %}
+            <tr>
+              <td style="font-weight:600">{{ row.expense__category__name }}</td>
+              <td>
+                {% if row.expense__category__category_type == 'direct' %}
+                  <span class="badge-direct">مباشر</span>
+                {% else %}
+                  <span class="badge-indirect">غير مباشر</span>
+                {% endif %}
+              </td>
+              <td class="text-start" style="font-weight:700">{{ row.total|floatformat:0 }} ج م</td>
+              <td class="text-start">
+                {% if grand_total %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px;min-width:50px">
+                      <div class="progress-bar {% if row.expense__category__category_type == 'direct' %}bg-primary{% else %}bg-warning{% endif %}"
+                           style="width:{% widthratio row.total grand_total 100 %}%"></div>
+                    </div>
+                    <small>{% widthratio row.total grand_total 100 %}%</small>
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3">لا توجد بيانات</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not grand_total %}
+<div class="empty-state mt-4">
+  <i class="bi bi-bar-chart"></i>
+  <p class="mb-1">لا توجد بيانات للعرض</p>
+  <small class="text-muted">أضف بعض المصروفات أولاً لتظهر التقارير هنا</small>
+</div>
+{% endif %}
+
+{% endblock %}

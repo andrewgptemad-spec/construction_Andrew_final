@@ -1,0 +1,10 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+staticfiles/
+
+# Keep backups before excluding these from source control.
+db.sqlite3
+media/

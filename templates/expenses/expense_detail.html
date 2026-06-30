@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}{{ expense.reference_number }} - تفاصيل المصروف{% endblock %}
+{% block page_title %}تفاصيل المصروف{% endblock %}
+
+{% block topbar_actions %}
+{% if request.user.is_staff %}
+<a href="{% url 'expense_edit' expense.pk %}" class="btn btn-outline-primary btn-sm">
+  <i class="bi bi-pencil me-1"></i>تعديل
+</a>
+<a href="{% url 'expense_delete' expense.pk %}" class="btn btn-outline-danger btn-sm">
+  <i class="bi bi-trash me-1"></i>حذف
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+
+    <!-- Main Info Card -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-receipt me-2"></i>تفاصيل المصروف</span>
+        <span class="ref-badge">{{ expense.reference_number }}</span>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">العنوان</label>
+            <div class="fw-700" style="font-size:1.05rem;font-weight:700">{{ expense.title }}</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">التاريخ</label>
+            <div class="fw-600" style="font-weight:600">{{ expense.date|date:"Y/m/d" }}</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">التصنيف</label>
+            <div>{{ expense.category.name }}</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">نوع المصروف</label>
+            <div>
+              {% if expense.expense_type == 'direct' %}
+                <span class="badge-direct">مباشر</span>
+              {% else %}
+                <span class="badge-indirect">غير مباشر</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">المبلغ الإجمالي</label>
+            <div class="fw-800" style="font-size:1.4rem;color:#1a3a5c;font-weight:800">
+              {{ expense.total_amount|floatformat:2 }}
+              <small style="font-size:0.85rem;font-weight:400">جنية</small>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">المورد</label>
+            <div>{{ expense.supplier_name|default:"—" }}</div>
+          </div>
+          {% if expense.notes %}
+          <div class="col-12">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">ملاحظات</label>
+            <div class="bg-light rounded p-3" style="white-space:pre-wrap">{{ expense.notes }}</div>
+          </div>
+          {% endif %}
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">تاريخ الإضافة</label>
+            <div style="font-size:0.85rem">{{ expense.created_at|date:"Y/m/d H:i" }}</div>
+          </div>
+          {% if expense.updated_at != expense.created_at %}
+          <div class="col-sm-6">
+            <label class="form-label text-muted mb-1" style="font-size:0.78rem">آخر تعديل</label>
+            <div style="font-size:0.85rem">{{ expense.updated_at|date:"Y/m/d H:i" }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Allocations Card -->
+    <div class="card">
+      <div class="card-header"><i class="bi bi-buildings me-2"></i>توزيع المصروف على الفيلات</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>الفيلا</th>
+              <th>الكود</th>
+              <th class="text-start">المبلغ المخصص</th>
+              <th class="text-start">النسبة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alloc in expense.allocations.all %}
+            <tr>
+              <td>
+                <a href="{% url 'villa_detail' alloc.villa.pk %}" class="text-decoration-none fw-600" style="font-weight:600">
+                  {{ alloc.villa.name }}
+                </a>
+              </td>
+              <td><span class="ref-badge">{{ alloc.villa.code }}</span></td>
+              <td class="text-start fw-700" style="font-weight:700">{{ alloc.allocated_amount|floatformat:2 }} ج م</td>
+              <td class="text-start">
+                {% if expense.total_amount %}
+                  {% widthratio alloc.allocated_amount expense.total_amount 100 %}%
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            <tr class="table-light fw-700" style="font-weight:700">
+              <td colspan="2">الإجمالي</td>
+              <td class="text-start">{{ expense.total_amount|floatformat:2 }} ج م</td>
+              <td class="text-start">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Column: Invoice -->
+  <div class="col-lg-4">
+    {% if expense.invoice_image %}
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-image me-2"></i>الفاتورة</div>
+      <div class="card-body text-center">
+        {% if expense.is_image %}
+          <img src="{{ expense.invoice_image.url }}" alt="فاتورة" class="img-fluid rounded invoice-preview">
+        {% else %}
+          <div class="p-4">
+            <i class="bi bi-file-pdf text-danger" style="font-size:3rem"></i>
+            <p class="mt-2 mb-3 text-muted">ملف PDF</p>
+            <a href="{{ expense.invoice_image.url }}" target="_blank" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-download me-1"></i>فتح الملف
+            </a>
+          </div>
+        {% endif %}
+        <div class="mt-2">
+          <a href="{{ expense.invoice_image.url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+            <i class="bi bi-box-arrow-up-left me-1"></i>فتح في نافذة جديدة
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="card-header"><i class="bi bi-lightning me-2"></i>إجراءات سريعة</div>
+      <div class="card-body d-grid gap-2">
+        {% if request.user.is_staff %}
+        <a href="{% url 'expense_edit' expense.pk %}" class="btn btn-primary">
+          <i class="bi bi-pencil me-1"></i>تعديل المصروف
+        </a>
+        {% endif %}
+        <a href="{% url 'expense_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-right me-1"></i>العودة للقائمة
+        </a>
+        {% if request.user.is_staff %}
+        <a href="{% url 'expense_delete' expense.pk %}" class="btn btn-outline-danger">
+          <i class="bi bi-trash me-1"></i>حذف المصروف
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

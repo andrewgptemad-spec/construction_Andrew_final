@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}قائمة المصروفات - نظام إدارة التكاليف{% endblock %}
+{% block page_title %}قائمة المصروفات{% endblock %}
+
+{% block topbar_actions %}
+{% if request.user.is_staff %}
+<a href="{% url 'expense_add' %}" class="btn btn-accent btn-sm">
+  <i class="bi bi-plus-lg me-1"></i> إضافة مصروف
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Card -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-funnel me-2"></i>البحث والتصفية</div>
+  <div class="card-body">
+    <form method="get" id="filterForm">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">بحث</label>
+          <div class="search-bar">
+            <i class="bi bi-search"></i>
+            {{ form.q }}
+          </div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">نوع المصروف</label>
+          {{ form.expense_type }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">التصنيف</label>
+          {{ form.category }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">الفيلا</label>
+          {{ form.villa }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">المورد</label>
+          {{ form.supplier }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">من تاريخ</label>
+          {{ form.date_from }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">إلى تاريخ</label>
+          {{ form.date_to }}
+        </div>
+        <div class="col-md-6 d-flex align-items-end gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search me-1"></i>بحث
+          </button>
+          <a href="{% url 'expense_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg me-1"></i>إعادة تعيين
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Results Summary -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="text-muted" style="font-size:0.88rem">
+    تم العثور على <strong>{{ total_count }}</strong> مصروف
+    بإجمالي <strong>{{ total_amount|floatformat:0 }} ج م</strong>
+  </div>
+</div>
+
+<!-- Expenses Table -->
+<div class="table-wrapper">
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>المرجع</th>
+          <th>العنوان</th>
+          <th>التصنيف</th>
+          <th>النوع</th>
+          <th>المبلغ</th>
+          <th>المورد</th>
+          <th>الفيلات</th>
+          <th class="text-center">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for expense in expenses %}
+        <tr>
+          <td style="white-space:nowrap">{{ expense.date|date:"Y/m/d" }}</td>
+          <td><span class="ref-badge">{{ expense.reference_number }}</span></td>
+          <td>
+            <a href="{% url 'expense_detail' expense.pk %}" class="text-decoration-none text-dark" style="font-weight:600">
+              {{ expense.title }}
+            </a>
+            {% if expense.invoice_image %}<i class="bi bi-paperclip text-muted ms-1" title="يوجد مرفق"></i>{% endif %}
+          </td>
+          <td>{{ expense.category.name }}</td>
+          <td>
+            {% if expense.expense_type == 'direct' %}
+              <span class="badge-direct">مباشر</span>
+            {% else %}
+              <span class="badge-indirect">غير مباشر</span>
+            {% endif %}
+          </td>
+          <td style="font-weight:700;white-space:nowrap">{{ expense.total_amount|floatformat:0 }} <small class="text-muted fw-normal">ج م</small></td>
+          <td>{{ expense.supplier_name|default:"-" }}</td>
+          <td>
+            {% for alloc in expense.allocations.all %}
+              <span class="badge bg-light text-dark border" style="font-size:0.72rem;margin:1px">
+                {{ alloc.villa.name }}
+                <small class="text-muted">({{ alloc.allocated_amount|floatformat:0 }})</small>
+              </span>
+            {% endfor %}
+          </td>
+          <td>
+            <div class="d-flex gap-1 justify-content-center">
+              <a href="{% url 'expense_detail' expense.pk %}" class="btn btn-sm btn-outline-primary" title="عرض">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if request.user.is_staff %}
+              <a href="{% url 'expense_edit' expense.pk %}" class="btn btn-sm btn-outline-secondary" title="تعديل">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <a href="{% url 'expense_delete' expense.pk %}" class="btn btn-sm btn-outline-danger" title="حذف">
+                <i class="bi bi-trash"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <p class="mb-1">لا توجد مصروفات</p>
+              {% if request.user.is_staff %}
+              <a href="{% url 'expense_add' %}" class="btn btn-primary btn-sm mt-2">
+                <i class="bi bi-plus-lg me-1"></i>إضافة أول مصروف
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if expenses.has_other_pages %}
+<nav class="mt-4 d-flex justify-content-center" aria-label="pagination">
+  <ul class="pagination">
+    {% if expenses.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ expenses.previous_page_number }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% for num in expenses.paginator.page_range %}
+    <li class="page-item {% if expenses.number == num %}active{% endif %}">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+    </li>
+    {% endfor %}
+    {% if expenses.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ expenses.next_page_number }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}
