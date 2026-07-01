@@ -1,10 +1,33 @@
-.env
+# Virtual environments
 .venv/
 venv/
+
+# Python
 __pycache__/
 *.py[cod]
+*$py.class
+
+# SQLite database
+db.sqlite3
+
+# Media uploads
+media/
+
+# Environment files
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Static collected files
 staticfiles/
 
-# Keep backups before excluding these from source control.
-db.sqlite3
-media/
+# PythonAnywhere
+*.log
