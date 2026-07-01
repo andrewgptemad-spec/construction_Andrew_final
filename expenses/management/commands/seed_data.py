@@ -39,7 +39,7 @@ class Command(BaseCommand):
         direct_cats = [
             'أسمنت', 'حديد', 'طوب', 'رمل', 'سن',
             'خرسانة', 'كهرباء', 'سباكة', 'محارة', 'دهانات',
-            'تشطيبات', 'نجارة', 'ألمنيوم', 'سيراميك', 'أخرى'
+            'تشطيبات', 'نجارة', 'ألمنيوم', 'سيراميك', 'تجهيزات', 'أخرى'
         ]
         for name in direct_cats:
             cat, created = ExpenseCategory.objects.get_or_create(
@@ -51,7 +51,7 @@ class Command(BaseCommand):
         # Indirect categories
         indirect_cats = [
             'سائق', 'استشاري', 'إيجار', 'بنزين', 'صيانة',
-            'خدمات', 'أدوات', 'مواصلات', 'مصروفات إدارية', 'أخرى'
+            'خدمات', 'أدوات', 'مواصلات', 'مصروفات إدارية', 'تجهيزات', 'أخرى'
         ]
         for name in indirect_cats:
             cat, created = ExpenseCategory.objects.get_or_create(

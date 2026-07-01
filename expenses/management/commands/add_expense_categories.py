@@ -18,6 +18,8 @@ class Command(BaseCommand):
             ('رخام', 'direct'),
             ('بورسلين', 'direct'),
             ('مصاعد', 'direct'),
+            ('تجهيزات', 'direct'),
+            ('تجهيزات', 'indirect'),
         ]
 
         dry = options.get('dry_run', False)
