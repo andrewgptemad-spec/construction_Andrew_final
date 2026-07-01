@@ -10,13 +10,16 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes', 'on')
 allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(',') if host.strip()]
 
-ALLOWED_HOSTS += [
-    "andrewemaddd.pythonanywhere.com",
+ALLOWED_HOSTS.extend([
     "127.0.0.1",
     "localhost",
-]
+    "andrewemaddd.pythonanywhere.com",
+])
+
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
 
 INSTALLED_APPS = [
     'django.contrib.admin',
